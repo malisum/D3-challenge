@@ -360,14 +360,14 @@ function createCircles(currentChartInfo) {
               .data(currentChartInfo.data)
               .exit()
               .remove();    
-    // Note - Adjust y axis by 2.5 to make it in middle of circle 
+    // Note - Adjust y axis by 3 to make it in middle of circle 
     chartGroup.selectAll(".stateText")
               .data(currentChartInfo.data)          
               .enter()
               .append("text")
               .classed("stateText", true)
               .attr("dx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
-              .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+2.5)
+              .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+3)
               .text(d => d.abbr);
     
     // Return
@@ -1001,11 +1001,11 @@ function renderVertical(currentChartInfo) {
     d3.selectAll(".stateText")
       .each(adjustCirclesTextY) 
     // Use .each & call fucntion adjustCircles to adjust y postion 
-    // Note adjust Y by 2.5
+    // Note adjust Y by 3
     function adjustCirclesTextY(){
         d3.select(this)
         .transition()
-        .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+2.5)
+        .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+3)
         .duration(circleDelay);
     }
   
