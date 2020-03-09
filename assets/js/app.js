@@ -4,10 +4,9 @@
 // ------------------------------------------------------------------------------------------------------------------------------------------------ //
 // ************************************************************************************************************************************************ //
 
-
 // Delay milli-seconds (2000 = 2 seconds animation delay)
 var axisDelay = 2000;
-var circleDely = 2000;
+var circleDelay = 2000;
 
 // SVG dimensions:
 var svgWidth = 900;
@@ -18,6 +17,11 @@ var svgHeight = 600;
 // right margin = 40
 // left margin = 100 (need more space to put y-axis labels)
 var margin = { top: 20, right: 40, bottom: 80, left: 100 };
+
+// Marging between X-Axis labels
+var xLabelMargin = 20;
+// Marging between X-Axis labels
+var yLabelMargin = 20;
 
 // Define the key elements for the CSV data & use to refer to the columns instead of hard coded names
 // if the CSV chnages then only this object values need to be changed  
@@ -31,6 +35,36 @@ var chartKeys = {
     healthcare:"healthcare",
     obesity:"obesity",
     smokes: "smokes"
+};
+
+// Define the description corresponding to key elements for the CSV data & use to refer to the columns instead of hard coded names
+// if the CSV chnages then only this object values need to be changed 
+// This is used for tooltip labels xTTLabel & yTTLabel  
+var chartKeysDesc = {
+    id: "ID",
+    state:"State",
+    stateCode : "State Code",
+    poverty: "Poverty",
+    age: "Age",
+    income:"Income",
+    healthcare:"Healthcare",
+    obesity:"Obesity",
+    smokes: "Smokes"
+};
+
+// Define the extended description corresponding to key elements for the CSV data & use to refer to the columns instead of hard coded names
+// if the CSV chnages then only this object values need to be changed 
+// This is used for X & Y Axis labels   
+var chartKeysLabelDesc = {
+    id: "ID",
+    state:"State",
+    stateCode : "State Code",
+    poverty: "In Poverty (%)",
+    age: "Age (Median)",
+    income:"Household Income (Median)",
+    healthcare:"Lacks Healthcare (%)",
+    obesity:"Obese (%)",
+    smokes: "Smokes (%)"
 };
 
 // Define X-Axis Domain Convesion Scale
@@ -92,7 +126,7 @@ function createChart(data) {
         };
         
     // Set default for currentX & currentY to currentChartInfo object 
-    currentChartInfo = setDefaultcurrentChartInfo(currentChartInfo);
+    currentChartInfo = setCurrentChartXYInfo("", "", currentChartInfo);
     
     // Set the X-Axis & Y-Axis to currentChartInfo object:
     currentChartInfo = setAxis(currentChartInfo);
@@ -105,9 +139,17 @@ function createChart(data) {
     // Plot the Tool tip text 
     createToolTip(currentChartInfo);
     
-    // Plot the labels for the Chart
-    // createLables()
-    
+    // Plot the X-Axis & Y-Axis labels for the Chart
+    createlabels(currentChartInfo);
+
+    // D3 select the X-Axis & Y-Axis click event (class = .aText): 
+    // Pass this(label clicked) & currentChartInfo to the handling function: 
+    d3.selectAll(".aText").on("click", function () {
+        handleClick(d3.select(this), currentChartInfo)
+    })
+
+    return;
+
 }
 // ************************************************************************************************************************************************ //
 // ------------------------------------------------------------------------------------------------------------------------------------------------ //
@@ -115,13 +157,52 @@ function createChart(data) {
 // ------------------------------------------------------------------------------------------------------------------------------------------------ //
 // ************************************************************************************************************************************************ //
 // Set the Default X & Y Axis for the Chart/Plot
-function setDefaultcurrentChartInfo(currentChartInfo) {
+function setCurrentChartXYInfo(selectedX, selectedY, currentChartInfo) {
 
-    // Set default X-Axis to Poverty
-    currentChartInfo.currentX = chartKeys.poverty;
-    // Set default Y-Axis to Healthcare
-    currentChartInfo.currentY = chartKeys.healthcare;
+// "" is passed to set Default 
+// "*NoChange" is passed if no change in that axis 
+// Value is passed to change current X or Y Axis 
 
+    if (selectedX == '*NoChange') {
+        // Skip - No change 
+    }
+    else 
+    {
+        // Poverty
+        // Set default X-Axis to Poverty
+        if ((selectedX == "") || (selectedX == chartKeys.poverty)) {
+            currentChartInfo.currentX = chartKeys.poverty;
+        }
+        // Age
+        if (selectedX == chartKeys.age) {
+            currentChartInfo.currentX = chartKeys.age;
+        }
+        // Income
+        if (selectedX == chartKeys.income) {
+            currentChartInfo.currentX = chartKeys.income;
+        }
+    }
+
+    if (selectedY == '*NoChange') {
+        // Skip - No change 
+    }
+    else 
+    {
+        // Healthcare 
+        // Set default Y-Axis to Healthcare
+        if ((selectedY == "") || (selectedY == chartKeys.healthcare)) {
+            currentChartInfo.currentY = chartKeys.healthcare;
+        }
+        // Smokes
+        if (selectedY == chartKeys.smokes) {
+            currentChartInfo.currentY = chartKeys.smokes;
+        }
+        // Income
+        if (selectedY == chartKeys.obesity) {
+            currentChartInfo.currentY = chartKeys.obesity;
+        }
+    }
+    
     // Return the updated currentChartInfo information 
     return currentChartInfo;
 
@@ -229,7 +310,12 @@ function createAxis(currentChartInfo) {
 function createCircles(currentChartInfo) {
 // Plot the Scatter Plot Circles
 
-    // Plot the circles (No circles exist - currently, number if curcles matching data in currentChartInfo will be appended)
+    // Plot the circles 
+    chartGroup.selectAll("circle")
+              .data(currentChartInfo.data)
+              .enter()
+              .remove();
+    
     chartGroup.selectAll("circle")
               .data(currentChartInfo.data)
               .enter()
@@ -249,37 +335,514 @@ function createCircles(currentChartInfo) {
 function createToolTip(currentChartInfo){
 // Create the tool tip - Display data on mouseover event 
     
-    var label;
+    // xTTLabel & yTTLabel will hold the label for tool tip text based on currentX & currentY selected
+    var xTTLabel = "";
+    xTTLabel = setXTTLabel(currentChartInfo);
+    var yTTLabel = "";
+    yTTLabel = setYTTLabel(currentChartInfo);
 
-    if (currentChartInfo.currentX === chartKeys.poverty) {
-    label = "Poverty";
-    }
-    else {
-    label = "TBD";
-    }
-
+    // Set the HTML for D3 Tip Text 
     var toolTip = d3.tip()
                     .attr("class", "tooltip")
                     .offset([80, -60])
                     .html(function (d) {
-                        var html = "X:"
-                        + "<br> " + label
+                        var html = d.state
+                        + "<br> " + xTTLabel + ": "
                         + d[currentChartInfo.currentX]
-                        + "<br> Y: "
+                        + "<br> " + yTTLabel + ": "
                         + d[currentChartInfo.currentY]
                         return html;
                     });
 
+    // Call D3 Tool Tip                
     chartGroup.call(toolTip);
 
+    // Display the tool tip text on mouseover event 
     var circles = d3.selectAll("circle");
     circles.on("mouseover", function (data) {
     toolTip.show(data);
     })
 
+    // Hide the tool tip text on mouseout event
     circles.on("mouseout", function (data, index) {
     toolTip.hide(data);
     });
+
+}
+
+// ************************************************************************************************************************************************ //    
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Set the label for X-Axis Tool Tip Text 
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function setXTTLabel(currentChartInfo){
+// Set the label for X-Axis Tool Tip Text
+
+    // Default the X-Axis Tool Tip Label 
+    var xTTLabel = "";
+    
+    // Set the X-Axis Tool Tip Label based on currentX 
+    switch(currentChartInfo.currentX) {
+        case chartKeys.poverty:
+            xTTLabel = chartKeysDesc.poverty;
+            break; 
+        case chartKeys.age:
+            xTTLabel = chartKeysDesc.age;
+            break;
+        case chartKeys.income:
+            xTTLabel = chartKeysDesc.income;
+        default:
+            xTTLabel = "Error (Unidentified X-Axis)"
+    };
+    
+    // Return the X-Axis Tool Tip Label 
+    return xTTLabel;
+    
+}
+// ************************************************************************************************************************************************ //    
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Set the label for X-Axis Tool Tip Text
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function setYTTLabel(currentChartInfo){
+// Set the label for Y-Axis Tool Tip Text
+
+    // Default the X-Axis Tool Tip Label 
+    var yTTLabel = "";
+    
+    // Set the Y-Axis Tool Tip Label based on currentY 
+        
+    // Set the xTTLabel (based on currentX)
+    switch(currentChartInfo.currentY) {
+        case chartKeys.healthcare:
+            yTTLabel = chartKeysDesc.healthcare;
+            break; 
+        case chartKeys.obesityage:
+            yTTLabel = chartKeysDesc.aobesity;
+            break;
+        case chartKeys.smokes:
+            yTTLabel = chartKeysDesc.smokes;
+        default:
+            yTTLabel = "Error (Unidentified X-Axis)"
+    };
+
+    // Return the Y-Axis Tool Tip Label
+    return yTTLabel;
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Create X-Axis & Y-Axis Labels
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function createlabels(currentChartInfo) {
+// Create X-Axis & Y-Axis Labels
+
+    // X-Axis:
+    // Dictionary for Xlabels 
+    xLabelClass = {};
+    // Create a group for XLabels within chartGroup and append the label text to it
+    // x = chartWidth/2
+    // y = chartHeight + 20 
+    var xlabelsGroup = chartGroup.append("g")
+                                 .attr("class", "xText")
+                                 .attr("transform", `translate(${chartWidth / 2}, ${chartHeight + 20})`);
+    // Get the label data-name element, label class & label text  
+    // This gived the data elements name per X-Axis label and sets the class to inactive or active based on currentX
+    xLabelClass = setXLabelsAttr(currentChartInfo);
+    // Plot the X-Axis Labels to xlabelsGroup using attributes from xLabelClass 
+    addXLabels(xlabelsGroup, xLabelClass);    
+
+    // Y-Axis:
+    // Dictionary for Ylabels 
+    yLabelClass = {};
+    // Create a group for YLabels within chartGroup and append the label text to it
+    // Tranform to rotate it left 90 degrees - So the text appears vertical    
+    var ylabelsGroup = chartGroup.append("g")
+                                 .attr("class", "yText")
+                                 .attr("transform", " rotate(-90)")
+    // Get the label data-name element, label class & label text  
+    // This gives the data elements name per Y-Axis label and sets the class to inactive or active based on currentY
+    yLabelClass = setYLabelsAttr(currentChartInfo);
+    // Plot the Y-Axis Labels to ylabelsGroup using attributes from yLabelClass 
+    addYLabels(ylabelsGroup, yLabelClass);    
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: X-Axis labels attributes 
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function setXLabelsAttr(currentChartInfo) {
+// Set X-Axis Label attributes
+
+    // Dictionary for storing label data name, label class & label text  
+    xLabelClass = {};
+
+    // x position 
+    xLabelClass.povertyX = 0;
+    xLabelClass.ageX = 0;
+    xLabelClass.incomeX = 0;
+    // y position 
+    xLabelClass.povertyY = 20;
+    xLabelClass.ageY = xLabelClass.povertyY + xLabelMargin;
+    xLabelClass.incomeY = xLabelClass.ageY + xLabelMargin;
+
+    // Label data names 
+    xLabelClass.povertyDataName = chartKeys.poverty;
+    xLabelClass.ageDataName = chartKeys.age;
+    xLabelClass.incomeDataName = chartKeys.income;
+
+    // data-axis
+    xLabelClass.povertyDataAxis = "x";
+    xLabelClass.ageDataAxis = "x";
+    xLabelClass.incomeDataAxis = "x";
+
+    // Label Class
+    //  Active X-Axis = "aText active x" & Inactive X-Axis = "aText inactive x"
+    // CSS sets the active to bold & inactive to gray 
+    // Poverty:
+    if (currentChartInfo.currentX === chartKeys.poverty) {
+        xLabelClass.povertyLabelClass = "aText active x"
+    }
+    else (
+        xLabelClass.povertyLabelClass = "aText inactive x"
+    )
+    // Age
+    if (currentChartInfo.currentX === chartKeys.age) {
+        xLabelClass.ageLabelClass = "aText active x"
+    }
+    else (
+        xLabelClass.ageLabelClass = "aText inactive x"
+    )
+    // Income
+    if (currentChartInfo.currentX === chartKeys.income) {
+        xLabelClass.incomeLabelClass = "aText active x"
+    }
+    else (
+        xLabelClass.incomeLabelClass = "aText inactive x"
+    )
+    
+    // Label Text 
+    xLabelClass.povertyLabelText = chartKeysLabelDesc.poverty;
+    xLabelClass.ageLabelText = chartKeysLabelDesc.age;
+    xLabelClass.incomeLabelText = chartKeysLabelDesc.income;
+
+    // Return the X-Axis label attributes 
+    return xLabelClass;
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Create X-Axis Labels
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function addXLabels(xlabelsGroup, xLabelClass) {
+// Create X-Axis &Labels
+
+    // xlabelsGroup has the group in chartGroup where the X-Axis labels are to be appended
+    // xLabelClass has the attributes needed to define the labels per X-Axis options 
+
+    // Append Poverty X-Axis Label (as text): 
+    xlabelsGroup.append("text")
+                .attr("x", xLabelClass.povertyX)
+                .attr("y", xLabelClass.povertyY)
+                .attr("data-name", xLabelClass.povertyDataName)
+                .attr("data-axis", xLabelClass.povertyDataAxis)
+                .attr("class", xLabelClass.povertyLabelClass)
+                .text(xLabelClass.povertyLabelText);
+
+    // Append Age X-Axis Label (as text): 
+    xlabelsGroup.append("text")
+                .attr("x", xLabelClass.ageX)
+                .attr("y", xLabelClass.ageY)
+                .attr("data-name", xLabelClass.ageDataName)
+                .attr("data-axis", xLabelClass.ageDataAxis)
+                .attr("class", xLabelClass.ageLabelClass)
+                .text(xLabelClass.ageLabelText);
+
+    // Append Income X-Axis Label (as text): 
+    xlabelsGroup.append("text")
+                .attr("x", xLabelClass.incomeX)
+                .attr("y", xLabelClass.incomeY)
+                .attr("data-name", xLabelClass.incomeDataName)
+                .attr("data-axis", xLabelClass.incomeDataAxis)
+                .attr("class", xLabelClass.incomeLabelClass)
+                .text(xLabelClass.incomeLabelText);
+
+        return;
+}
+
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Y-Axis labels attributes 
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function setYLabelsAttr(currentChartInfo) {
+// Set Y-Axis Label attributes
+
+    // Dictionary for storing label data name, label class & label text  
+    yLabelClass = {};
+
+    // x position 
+    // Note: multiply by -1 (to go left of chart axis)
+    yLabelClass.healthcareX = (chartHeight / 2)* -1;
+    yLabelClass.obesityX = (chartHeight / 2)* -1;
+    yLabelClass.smokesX = (chartHeight / 2)* -1;
+
+    // y position 
+    // Note: negative value to go down from left corner 
+    yLabelClass.healthcareY = -20;
+    yLabelClass.obesityY = yLabelClass.healthcareY - yLabelMargin;
+    yLabelClass.smokesY = yLabelClass.obesityY - yLabelMargin;
+
+    // Label data names 
+    yLabelClass.healthcareDataName = chartKeys.healthcare;
+    yLabelClass.obesityDataName = chartKeys.obesity;
+    yLabelClass.smokesDataName = chartKeys.smokes;
+
+    // data-axis
+    yLabelClass.healthcareDataAxis = "y";
+    yLabelClass.obesityDataAxis = "y";
+    yLabelClass.smokesDataAxis = "y";
+
+    // Label Class
+    //  Active X-Axis = "aText active x" & Inactive X-Axis = "aText inactive x"
+    // CSS sets the active to bold & inactive to gray 
+    // healthcare:
+    if (currentChartInfo.currentY === chartKeys.healthcare) {
+        yLabelClass.healthcareLabelClass = "aText active x"
+    }
+    else (
+        yLabelClass.healthcareLabelClass = "aText inactive x"
+    )
+    // obesity
+    if (currentChartInfo.currentY === chartKeys.obesity) {
+        yLabelClass.obesityLabelClass = "aText active x"
+    }
+    else (
+        yLabelClass.obesityLabelClass = "aText inactive x"
+    )
+    // smokes
+    if (currentChartInfo.currentY === chartKeys.smokes) {
+        yLabelClass.smokesLabelClass = "aText active x"
+    }
+    else (
+        yLabelClass.smokesLabelClass = "aText inactive x"
+    )
+    
+    // Label Text 
+    yLabelClass.healthcareLabelText = chartKeysLabelDesc.healthcare;
+    yLabelClass.obesityLabelText = chartKeysLabelDesc.obesity;
+    yLabelClass.smokesLabelText = chartKeysLabelDesc.smokes;
+
+    // Return the X-Axis label attributes 
+    return yLabelClass;
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Create Y-Axis Labels
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function addYLabels(xlabelsGroup, yLabelClass) {
+// Create X-Axis &Labels
+
+    // xlabelsGroup has the group in chartGroup where the X-Axis labels are to be appended
+    // yLabelClass has the attributes needed to define the labels per X-Axis options 
+        // Append healthcare X-Axis Label (as text): 
+        xlabelsGroup.append("text")
+                    .attr("x", yLabelClass.healthcareX)
+                    .attr("y", yLabelClass.healthcareY)
+                    .attr("data-name", yLabelClass.healthcareDataName)
+                    .attr("data-axis", yLabelClass.healthcareDataAxis)
+                    .attr("class", yLabelClass.healthcareLabelClass)
+                    .text(yLabelClass.healthcareLabelText);
+
+        // Append obesity X-Axis Label (as text): 
+        xlabelsGroup.append("text")
+                    .attr("x", yLabelClass.obesityX)
+                    .attr("y", yLabelClass.obesityY)
+                    .attr("data-name", yLabelClass.obesityDataName)
+                    .attr("data-axis", yLabelClass.obesityDataAxis)
+                    .attr("class", yLabelClass.obesityLabelClass)
+                    .text(yLabelClass.obesityLabelText);
+
+        // Append smokes X-Axis Label (as text): 
+        xlabelsGroup.append("text")
+                    .attr("x", yLabelClass.smokesX)
+                    .attr("y", yLabelClass.smokesY)
+                    .attr("data-name", yLabelClass.smokesDataName)
+                    .attr("data-axis", yLabelClass.smokesDataAxis)
+                    .attr("class", yLabelClass.smokesLabelClass)
+                    .text(yLabelClass.smokesLabelText);
+
+        return;
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Hanlde Click (X-Axis or Y-Axis (class = .aText))
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function handleClick(labelClicked, currentChartInfo) {
+// Hanlde Click (X-Axis or Y-Axis (class = .aText))
+
+    // labelClassActive (class of the label clicked)
+    labelClassActive = labelClicked.classed("active");
+
+    // If the clicked axis is active - Do Nothing (already active) 
+    // Else - Reset the chart
+    if (labelClassActive == true) {
+        // Do Nothing & return 
+        return; 
+    }
+    else {
+        recreateChart(labelClicked, currentChartInfo);
+    }
+ 
+    return;
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Reset X & Y Axis for the Chart/Plot (click event)
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function recreateChart(labelClicked, currentChartInfo) {
+// Recreate the Chart/Plot based in Axis selection
+// This function is called when an axis is clicked (which is different from current active selection)
+ 
+    // name and axis clicked 
+    var axisClicked = labelClicked.attr("data-axis");
+    var nameClicked = labelClicked.attr("data-name");
+ 
+    // X-Axis was clicked
+    if (axisClicked == "x") {
+        // update currentX
+        currentChartInfo = setCurrentChartXYInfo(nameClicked,"*NoChange", currentChartInfo);
+        // Update Axis - Active/Inactive 
+        updateLabel(labelClicked, axisClicked);
+        // Reset the X-Axis 
+        currentChartInfo.xScale.domain(getXDomain(currentChartInfo));
+        // Render X-Axis & Horizontal 
+        renderXAxis(currentChartInfo);
+        renderHorizontal(currentChartInfo);
+    }
+    // Y-Axis was clicked 
+    if (axisClicked == "y") {
+        // update currentY
+        currentChartInfo = setCurrentChartXYInfo("*NoChange", nameClicked, currentChartInfo);
+        // Update Axis - Active/Inactive 
+        updateLabel(labelClicked, axisClicked);
+        // Reset the Y-Axis 
+        currentChartInfo.xScale.domain(getXDomain(currentChartInfo));
+        // Render Y-Axis & Vertical 
+        renderYAxis(currentChartInfo);
+        renderVertical(currentChartInfo);
+    }
+    
+    return; 
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Update Label (Reverse Active & Inactive ) 
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function updateLabel(labelClicked, axisClicked) {
+
+    // select current active and update to inactive
+    d3.selectAll(".aText")
+      .filter("." + axisClicked)
+      .filter(".active")
+      .classed("active", false)
+      .classed("inactive", true);
+
+    // updated new selected inactive to active
+    labelClicked.classed("inactive", false).classed("active", true);
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Render X-Axis
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function renderXAxis(currentChartInfo) {
+  
+    // Add the delay animation  
+    chartGroup.select(".x-axis")
+              .transition()
+              .duration(axisDelay)
+              .call(currentChartInfo.xAxis);
+
+    return;
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Render Y-Axis
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function renderYAxis(currentChartInfo) {
+
+    chartGroup.select(".y-axis")
+              .transition()
+              .duration(axisDelay)
+              .call(currentChartInfo.yAxis);
+
+    return;
+
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Render Horizontal (Circle's X Position)
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function renderHorizontal(currentChartInfo) {
+
+    // Select all circles
+    d3.selectAll("circle")
+      .each(adjustCirclesX) 
+
+    // Use .each & call fucntion adjustCircles to adjust x postion 
+    function adjustCirclesX(){
+        d3.select(this)
+          .transition()
+          .attr("cx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
+          .duration(circleDelay)
+    }
+
+    return;
+}
+
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// Function: Render Vertical (Circle's Y Position)
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
+function renderVertical(currentChartInfo) {
+
+    // Select all circles
+    d3.selectAll("circle")
+      .each(adjustCirclesY) 
+
+    // Use .each & call fucntion adjustCircles to adjust x postion 
+    function adjustCirclesY(){
+        d3.select(this)
+          .transition()
+          .attr("cy", d => currentChartInfo.yScale(d[currentChartInfo.currentY]))
+          .duration(circleDelay)
+    }
+
+    return;
 
 }
 
@@ -361,161 +924,6 @@ function chartError(dataError) {
             .style("color", "red");
 }
     
-
-    
-// /********************************************/
-
-
-
-
-
-
-
-// function createChart(hairData) {
-
-
-
-
-//   d3.selectAll(".aText").on("click", function () {
-//     handleClick(d3.select(this), currentChartInfo)
-//   })
-
-// }
-// /********************************************/
-
-// function handleClick(label, currentChartInfo) {
-
-//   var axis = label.attr("data-axis")
-//   var name = label.attr("data-name");
-
-//   if (label.classed("active")) {
-//     //no need to do anything if clicked on active axis
-//     return;
-//   }
-//   updateLabel(label, axis)
-
-//   // which axis was clicked
-//   if (axis === "x") {
-//     // set the currentX before calling getXDomain  
-//     currentChartInfo.currentX = name;
-//     currentChartInfo.xScale.domain(getXDomain(currentChartInfo))
-//     renderXAxes(currentChartInfo)
-//     renderHorizontal(currentChartInfo)
-//   }
-//   else //add logic to handle y axis click
-//   {
-//     // set the currentY before calling getYDomain  
-//     currentChartInfo.currentY = name;
-//     currentChartInfo.yScale.domain(getYDomain(currentChartInfo))
-//     renderYAxes(currentChartInfo)
-//     renderVertical(currentChartInfo)
-//   }
-// }
-
-// /********************************************/
-
-// function createLables() {
-
-//   // create a group and append later 
-
-//   var xlabelsGroup = chartGroup.append("g")
-//     .attr("class", "xText")
-//     .attr("transform", `translate(${chartWidth / 2}, ${chartHeight + 20})`);
-
-//   // adding data-name & data-axis 
-//   // to track name of column  & axis (x or y)
-//   // set classes (see css)
-//   // see active & inactive 
-//   // active - bold 
-//   // inactive - gray & on hover - pointer 
-
-//   xlabelsGroup.append("text")
-//     .attr("x", 0)
-//     .attr("y", 20)
-//     .attr("data-name", "hair_length")
-//     .attr("data-axis", "x")
-//     .attr("class", "aText active x")
-//     .text("Hair Metal Ban Hair Length (inches)");
-
-//   xlabelsGroup.append("text")
-//     .attr("x", 0)
-//     .attr("y", 40)
-//     .attr("data-name", "num_albums")
-//     .attr("data-axis", "x")
-//     .attr("class", "aText inactive x")
-//     .text("# of Albums Released");
-
-//   var ylabelsGroup = chartGroup.append("g")
-//     .attr("class", "yText")
-//     .attr("transform", " rotate(-90)")
-
-//   ylabelsGroup.append("text")
-//     .attr("y", -60)
-//     .attr("x", -chartHeight / 2)
-//     .attr("dy", "1em")
-//     .attr("data-name", "num_hits")
-//     .attr("data-axis", "y")
-//     .attr("class", "aText active y")
-//     .text("Number of Billboard 500 Hits");
-
-// }
-// /********************************************/
-
-
-// /********************************************/
-// function renderXAxes(currentChartInfo) {
-//   // add the delay animation  
-//   chartGroup.select(".x-axis").transition()
-//     .duration(axisDelay)
-//     .call(currentChartInfo.xAxis);
-// }
-// /********************************************/
-// function renderYAxes() {
-//   chartGroup.select(".y-axis").transition()
-//     .duration(axisDelay)
-//     .call(currentChartInfo.yAxis);
-// }
-
-
-// function renderHorizontal(currentChartInfo) {
-
-//   d3.selectAll("circle")
-//     .each(adjustCircles) 
-
-//   // use .each & call fucntion adjustCircles 
-
-//   function adjustCircles(){
-//     d3.select(this)
-//       .transition()
-//       .attr("cx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
-//       .duration(circleDely)
-//   }
-// }
-
-// /********************************************/
-// function renderVertical(currentChartInfo) {
-//   d3.selectAll("circle")
-//     .each(function () {
-//       d3.select(this)
-//         .transition()
-//         .attr("cy", d => currentChartInfo.yScale(d[currentChartInfo.currentY]))
-//         .duration(circleDely)
-//     })
-// }
-
-// /********************************************/
-
-// function updateLabel(label, axis) {
-
-//   d3.selectAll(".aText")
-//     .filter("." + axis)
-//     .filter(".active")
-//     .classed("active", false)
-//     .classed("inactive", true);
-
-//   label.classed("inactive", false).classed("active", true)
-// }
-
-// /********************************************/
-
-// /********************************************/
+// ************************************************************************************************************************************************ //
+// ------------------------------------------------------------------------------------------------------------------------------------------------ //
+// ************************************************************************************************************************************************ //
