@@ -341,34 +341,21 @@ function createAxis(currentChartInfo) {
 function createCircles(currentChartInfo) {
 // Plot the Scatter Plot Circles
 
-    // Plot the circles (Class = stateCircle)
-    chartGroup.selectAll(".stateCircle")
+    // Plot the circles 
+    chartGroup.selectAll("circle")
               .data(currentChartInfo.data)
               .enter()
-              .remove(); 
-    chartGroup.selectAll(".stateCircle")
+              .remove();
+    
+    chartGroup.selectAll("circle")
               .data(currentChartInfo.data)
               .enter()
               .append("circle")
-              .classed("stateCircle", true)
               .attr("cx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
               .attr("cy", d => currentChartInfo.yScale(d[currentChartInfo.currentY]))
-              .attr("r", 10);
-
-    // Plot the State Codes (Class = stateText)
-    chartGroup.selectAll(".stateText")
-              .data(currentChartInfo.data)
-              .exit()
-              .remove();    
-    // Note - Adjust y axis by 2.5 to make it in middle of circle 
-    chartGroup.selectAll(".stateText")
-              .data(currentChartInfo.data)          
-              .enter()
-              .append("text")
-              .classed("stateText", true)
-              .attr("dx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
-              .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+2.5)
-              .text(d => d.abbr);
+              .attr("r", 10)
+              .attr("fill", "#80bfff")
+              .attr("opacity", ".75");
     
     // Return
     return;
@@ -402,7 +389,7 @@ function createToolTip(currentChartInfo){
 
     // Set the HTML for D3 Tip Text 
     var toolTip = d3.tip()
-                    .attr("class", "d3-tip")
+                    .attr("class", "tooltip")
                     .offset([80, -60])
                     .html(function (d) {
                         var html = d.state
@@ -952,28 +939,18 @@ function renderYAxis(currentChartInfo) {
 // ************************************************************************************************************************************************ //
 function renderHorizontal(currentChartInfo) {
 
-    // Select all State circles & adjust X position 
-    d3.selectAll(".stateCircle")
+    // Select all circles
+    d3.selectAll("circle")
       .each(adjustCirclesX) 
+
     // Use .each & call fucntion adjustCircles to adjust x postion 
     function adjustCirclesX(){
         d3.select(this)
           .transition()
           .attr("cx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
-          .duration(circleDelay);
+          .duration(circleDelay)
     }
 
-    // Select all State code text & adjust X position 
-    d3.selectAll(".stateText")
-      .each(adjustCirclesTextX) 
-    // Use .each & call fucntion adjustCircles to adjust x postion 
-    function adjustCirclesTextX(){
-        d3.select(this)
-        .transition()
-        .attr("dx", d => currentChartInfo.xScale(d[currentChartInfo.currentX]))
-        .duration(circleDelay);
-    }
-  
     // Return
     return;
 
@@ -986,10 +963,11 @@ function renderHorizontal(currentChartInfo) {
 // ************************************************************************************************************************************************ //
 function renderVertical(currentChartInfo) {
 
-    // Select all State circles & adjust Y position 
-    d3.selectAll(".stateCircle")
+    // Select all circles
+    d3.selectAll("circle")
       .each(adjustCirclesY) 
-    // Use .each & call fucntion adjustCircles to adjust y postion 
+
+    // Use .each & call fucntion adjustCircles to adjust x postion 
     function adjustCirclesY(){
         d3.select(this)
           .transition()
@@ -997,18 +975,6 @@ function renderVertical(currentChartInfo) {
           .duration(circleDelay)
     }
 
-    // Select all State code text & adjust Y position 
-    d3.selectAll(".stateText")
-      .each(adjustCirclesTextY) 
-    // Use .each & call fucntion adjustCircles to adjust y postion 
-    // Note adjust Y by 2.5
-    function adjustCirclesTextY(){
-        d3.select(this)
-        .transition()
-        .attr("dy", d => currentChartInfo.yScale(d[currentChartInfo.currentY])+2.5)
-        .duration(circleDelay);
-    }
-  
     // Return
     return;
 
