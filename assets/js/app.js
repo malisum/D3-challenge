@@ -10,10 +10,7 @@ var circleDelay = 2000;
 
 // SVG dimensions:
 var svgWidth = 900;
-// var svgWidth = parseInt(d3.select("#scatter").style("width"));
-
 var svgHeight = 600;
-// var svgHeight = svgWidth - svgWidth / 3.9;
 
 // Set the chart margins (within svg):
 // top margin = 20
@@ -95,11 +92,13 @@ var chartHeight = svgHeight - margin.top - margin.bottom;
 // Select id="scatter" and append svg
 // Define the SVG wrapper 
 var scatter = d3.select("#scatter");
+
 // var svg = scatter.append("svg")
 //                  .attr("width", svgWidth)
 //                  .attr("height", svgHeight)
 //                  .attr("class", "chart");
 
+// Use viewbox to make svg responsive  
 var svg = scatter.append("svg")
                  .attr("class", "chart")                 
                  .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
