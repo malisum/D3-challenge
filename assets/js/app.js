@@ -10,7 +10,11 @@ var circleDelay = 2000;
 
 // SVG dimensions:
 var svgWidth = 900;
+// var svgWidth = parseInt(d3.select("#scatter").style("width"));
+
 var svgHeight = 600;
+// var svgHeight = svgWidth - svgWidth / 3.9;
+
 // Set the chart margins (within svg):
 // top margin = 20
 // bottom margin = 80 (need more space to put x-axis labels)
@@ -91,9 +95,14 @@ var chartHeight = svgHeight - margin.top - margin.bottom;
 // Select id="scatter" and append svg
 // Define the SVG wrapper 
 var scatter = d3.select("#scatter");
+// var svg = scatter.append("svg")
+//                  .attr("width", svgWidth)
+//                  .attr("height", svgHeight)
+//                  .attr("class", "chart");
+
 var svg = scatter.append("svg")
-                 .attr("width", svgWidth)
-                 .attr("height", svgHeight);
+                 .attr("class", "chart")                 
+                 .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
 
 // Create group as "chartGroup" - This will be the highest level grouper for all the elements that go on the chart
 // Use tranform attribute translate to specify the dimensions 
